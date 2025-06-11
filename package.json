@@ -1,13 +1,13 @@
 {
-  "name": "kaicode",
-  "version": "1.0.0",
+  "name": "kaicode-judge",
+  "version": "0.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "cqnf",
+  "license": "MIT",
   "dependencies": {
     "axios": "^1.6.8",
     "octokit": "^3.2.0"
