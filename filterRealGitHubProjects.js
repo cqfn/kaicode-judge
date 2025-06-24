@@ -2,7 +2,7 @@ const octokit = require("./githubClient")
 const fs = require('fs')
 const path = require('path');
 const { delay } = require('./common')
-
+const axios = require('axios');
 
 const startDate = new Date(process.env.START_DATE ?? '2019-01-01')
 const lastDate = new Date(process.env.LAST_DATE ?? '2023-05-01')
@@ -53,12 +53,14 @@ function passesAllQualityChecks(data, repo) {
          hasLicense(data) && 
          hasSufficientlyLongReadme(repo) && 
          hasSufficentAmountOfIssues(data) &&
-         hasSufficentAmountOfCommits(data)
+         hasSufficentAmountOfCommits(data) &&
+         hasSufficentAmountOfPulls(data) && 
+         hasWorkflows(repo)
 }
 
 /**
  * @param {*} data 
- * @returns true if the project has a defined license, false otherwise
+ * @returns true if the project has a defined license, false otherwise.
  */
 function hasLicense(data) {
   return !data.license || !data.license?.key
@@ -81,6 +83,52 @@ async function hasSufficentAmountOfIssues(data, expectedIssuesCount = process.en
   }
 }
 
+async function hasWorkflows(url, expectedWorkflowsCount = process.env.WORKFLOWS_COUNT) {
+  req = await octokit.request(`GET /repos/${url}/actions/workflows`, {
+    per_page: expectedWorkflowsCount,
+    page: 1
+  })
+
+  if (req.status === 200) {
+    return req.data.total_count >= expectedWorkflowsCount 
+  } else {
+    throw new Error(`Unable to discover the amount of workflows in the project: ${url}`)
+  }
+}
+
+async function hasSufficentAmountOfPulls(data, expectedPulls = process.env.PULL_REQUESTS) {
+
+  req = await octokit.request(`GET ${data.pulls_url}`, {
+    state: 'all',
+    per_page: expectedPulls,
+    page: 1
+  })
+
+  await delay(300)
+
+  if (req.status === 200) {
+    return req.data.length >= expectedPulls
+  } else {
+    throw new Error(`Unable to discover the amount of pulls in the project: ${data.pulls_url}`)
+  }
+}
+
+async function hasSufficentAmountOfCommits(data, expectedCommitsCount = process.env.COMMITS_COUNT) {
+
+  req = await octokit.request(`GET ${data.commits_url}`, {
+    per_page: expectedCommitsCount,
+    page: 1
+  })
+
+  await delay(300)
+
+  if (req.status === 200) {
+    return req.data.length >= expectedCommitsCount
+  } else {
+    throw new Error(`Unable to discover the amount of commits in the project: ${data.commits_url}`)
+  }
+}
+
 async function hasSufficentAmountOfCommits(data, expectedCommitsCount = process.env.COMMITS_COUNT) {
 
   req = await octokit.request(`GET ${data.commits_url}`, {
@@ -98,7 +146,7 @@ async function hasSufficentAmountOfCommits(data, expectedCommitsCount = process.
 }
 
 /**
- * Chech if the project's README has the expected amount of lines in it
+ * Chech if the project's README has the expected amount of lines in it.
  * 
  * @param {string} projectUrls - the url of a given project
  * @param {number} readmeLines - the expected amount of lines in README
@@ -121,8 +169,8 @@ async function hasSufficientlyLongReadme(projectUrls, readmeLines = process.env.
 } 
 
 /**
- * @param {string} projectUrls - the url of the project
- * @param {number} releasesNum - required number of releases  
+ * @param {string} projectUrls - the url of the project.
+ * @param {number} releasesNum - required number of releases.
  * @returns 
  */
 async function hasRequierdNumberOfReleases(projectUrls, releasesNum = process.env.MIN_RELEASES) {
@@ -141,7 +189,7 @@ async function hasRequierdNumberOfReleases(projectUrls, releasesNum = process.en
 }
 
 /**
- * Perform basic checks for the project to make sure the project is open source and maintained
+ * Perform basic checks for the project to make sure the project is open source and maintained.
  * @param {*} data 
  */
 function isRealGitHubRepo(data) {
@@ -154,7 +202,7 @@ function isRealGitHubRepo(data) {
 }
 
 /**
- * @returns {Array<string>} the alphabetically sorted array of repositories, that passed initial filtering
+ * @returns {Array<string>} the alphabetically sorted array of repositories, that passed initial filtering.
  */
 function distillRepos() {
     return [...new Set(
@@ -170,8 +218,8 @@ function distillRepos() {
 }
 
 /**
- * @param {string} repo - the name of the repo
- * @returns @returns {string} the cleaned-up repo URL 
+ * @param {string} repo - the name of the repo.
+ * @returns @returns {string} the cleaned-up repo URL.
  */
 function cleanUpUrl(repo) {
     let rp = repo

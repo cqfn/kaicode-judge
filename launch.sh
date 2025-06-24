@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#Minimum count of workflows in the project in order for a project to be considered as a candidate 
+export WORKFLOWS_COUNT=1
+
+#Minimum count of pull requests in the project (both closed, opened, draft etc) in order for a project to be considered as a candidate
+export PULL_REQUESTS=10
+
 #Minimum count of issues in the project (both closed and opened) in order for a project to be considered as a candidate
 export ISSUES_COUNT=10
 

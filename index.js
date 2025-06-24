@@ -1,8 +1,7 @@
 const {octokit} = require('./githubClient')
 const { filterRealGitHubProjects } = require('./filterRealGitHubProjects')
-const { delay, isSourceCodeFile } = require('./common')
+const { isSourceCodeFile } = require('./common')
 
-const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const {execSync} = require('child_process');
@@ -15,142 +14,8 @@ async function filterRepos() {
       .slice(repo.indexOf('](') + 2, repo.length - 1)
       .slice('https://github.com/'.length)
   )
-  const result = []
-  for (let idx in repos) {
-    const url = repos[idx]
-    let req
-    try {
-      const response = await octokit.request('GET https://api.github.com/repos/' + url)
-      if (response.status === 200) {
-        console.log('\nprocessing', url)
-        const data = response.data
 
-        await delay(300)
-
-        req = await octokit.request(`GET /repos/${url}/releases`, {
-          per_page: 5,
-          page: 1
-        })
-
-        if (req.status === 200) {
-          console.log('releases', req.data.length)
-          if (req.data.length !== 5) {
-            continue
-          }
-        } else {
-          // TODO: that is not fair, it should be re-tried
-          continue
-        }
-
-        // Check license
-        if (!data.license || !data.license?.key) {
-          continue
-        }
-
-        await delay(300)
-
-        // Check readme
-        req = await octokit.request(`GET /repos/${url}/readme`)
-
-        if (req.status === 200) {
-          await delay(300)
-
-          console.log(req)
-
-          req = await axios.get(req.data.download_url)
-          const lines = req.data.split('\n')
-
-          if (lines.length < 20) {
-            continue
-          }
-        } else {
-          // TODO: that is not fair, it should be re-tried
-          continue
-        }
-
-        // Issues >= 10
-        req = await octokit.request(`GET ${data.issues_url}`, {
-          state: 'all',
-          per_page: 20,
-          page: 1
-        })
-
-        if (req.status === 200) {
-          console.log('issues', req.data.length)
-          if (req.data.length < 10) {
-            continue
-          }
-        } else {
-          // TODO: that is not fair, it should be re-tried 
-          continue
-        }
-
-        await delay(300)
-
-        // Commits >= 50
-        req = await octokit.request(`GET ${data.commits_url}`, {
-          per_page: 60,
-          page: 1
-        })
-
-        if (req.status === 200) {
-          console.log('commits', req.data.length)
-
-          if (req.data.length < 50) {
-            continue
-          }
-        } else {
-          // TODO: that is not fair, it should be re-tried
-          continue
-        }
-
-        await delay(300)
-
-        // Pulls >= 10
-        req = await octokit.request(`GET ${data.pulls_url}`, {
-          state: 'all',
-          per_page: 11,
-          page: 1
-        })
-
-        if (req.status === 200) {
-          console.log('pulls', req.data.length)
-          if (req.data.length < 10) {
-            continue
-          }
-        } else {
-          // TODO: that is not fair, it should be re-tried
-          continue
-        }
-
-        await delay(300)
-
-        // Has workflows
-        req = await octokit.request(`GET /repos/${url}/actions/workflows`, {
-          per_page: 1,
-          page: 1
-        })
-
-        if (req.status === 200) {
-          console.log('workflows', req.data.total_count)
-
-          if (req.data.total_count === 0) {
-            console.log(req.data)
-            continue
-          }
-        }
-
-        console.log('added', url)
-        result.push(url)
-      } else {
-        console.warn('Something went wrong: ', response)
-      }
-    } catch (e) {
-      console.warn('Request fail: ', e.message)
-    }
-  }
-
-  result.forEach((repo) => {
+  repos.forEach((repo) => {
     fs.appendFileSync(path.resolve(__dirname, 'files/releases.txt'), `${repo}\n`)
   })
 }
