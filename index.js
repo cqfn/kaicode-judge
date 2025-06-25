@@ -5,164 +5,13 @@ const path = require('path');
 const {execSync} = require('child_process');
 
 const octokit = new Octokit({
-  auth: '' // your GitHub token here
+  auth: process.env.GITHUB_TOKEN,
 });
-
-function addDays(date, days) {
-  let result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-// Search github repositories
-async function searchRepositories(ids, first, second) {
-  const filter = new Set(ids)
-  const owners = [];
-  let total = 1
-  let page = 1
-  let data
-  while (page <= total) {
-    try {
-      const response = await octokit.request('GET https://api.github.com/search/repositories', {
-        q: [
-          'stars:100..1000',
-          `created:${first.toISOString()}..${second.toISOString()}`,
-          'is:public',
-          'template:false',
-          'archived:false',
-          'size:>1000',
-          'mirror:false',
-          'language:C++',
-          'language:C#',
-          'language:Java',
-          'language:JavaScript',
-          'language:TypeScript',
-          'language:Python',
-          'language:PHP',
-          'language:Ruby',
-          'language:Go',
-          'language:Rust',
-          'language:Kotlin'
-        ].join(' '),
-        per_page: 100,
-        // per_page: 1,
-        page: page
-      })
-      if (response.status === 200) {
-        data = response.data
-        console.log(data.total_count)
-        // console.log(data.items[0].owner)
-        for (let i = 0; i < data.items.length; i++) {
-          if (!filter.has(data.items[i].owner.login)) {
-            owners.push(data.items[i].owner.login)
-            filter.add(data.items[i].owner.login)
-          }
-        }
-        total = Math.ceil(response.data.total_count / 100)
-        page++
-      } else {
-        console.log('Something went wrong: ', response)
-      }
-      setTimeout(() => {
-      }, 300)
-    } catch (e) {
-      console.log('Request fail: ', e.message)
-    }
-  }
-  return owners
-}
-
-async function getRepositories() {
-  const pth = path.resolve(__dirname, 'files/hundred.txt')
-  const content = fs.readFileSync(pth).toString()
-  const split = content.split('\n--')
-  split.pop()
-  let ids = []
-  let first, second
-  if (content.length === 0) {
-    first = new Date('2019-01-01')
-  } else {
-    for (let i = 0; i < split.length; i++) {
-      const lines = split[i].split('\n')
-      first = addDays(new Date(lines.shift()), 15)
-      for (let j = 0; j < lines.length; j++) {
-        ids.push(lines[j])
-      }
-    }
-  }
-  const finish = new Date('2023-05-01')
-  second = addDays(first, 15)
-
-  while (second <= finish) {
-    console.log(first.toISOString() + '--' + second.toISOString())
-
-    let owners = await req(ids, first, second)
-    ids = new Set([...ids, ...owners])
-    console.log('written', owners.length)
-    fs.appendFileSync(pth, `${first.toISOString()}\n${owners.join('\n')}\n--`)
-
-    first = second
-    second = addDays(second, 15)
-  }
-}
-
-async function getEmails() {
-  const pth = path.resolve(__dirname, 'files/pre.txt')
-  const epth = path.resolve(__dirname, 'files/ehundred.txt')
-  console.log(pth)
-  const content = fs.readFileSync(pth).toString()
-  const split = content.split('\n--')
-  split.shift()
-  split.pop()
-  let logins = []
-  if (content.length !== 0) {
-    for (let i = 0; i < split.length; i++) {
-      const lines = split[i].split('\n')
-      lines.shift()
-      logins = [...logins, ...lines]
-    }
-  }
-  console.log('unique logins', logins.length)
-  let data
-
-  for (let i = 0; i < logins.length; ++i) {
-    try {
-      const response = await octokit.request('GET https://api.github.com/users/' + logins[i])
-      if (response.status === 200) {
-        data = response.data
-        if (data.email && data.type !== 'Organization' && data.name) {
-          console.log('written', logins[i], data.name, data.email)
-          fs.appendFileSync(epth, `${logins[i]} || ${data.name} || ${data.email}\n`)
-        }
-        console.log('left', logins.length - i)
-        await delay(770)
-      } else {
-        console.log('Something went wrong: ', response)
-      }
-    } catch (e) {
-      console.log('Request fail: ', e.message)
-    }
-  }
-}
 
 function delay(milliseconds) {
   return new Promise(resolve => {
     setTimeout(resolve, milliseconds);
   });
-}
-
-function process() {
-  const pth = path.resolve(__dirname, 'files/ehundred.txt')
-  const lines = fs.readFileSync(pth).toString().split('\n')
-  let res = []
-  for (let i = 0; i < lines.length; i++) {
-    const data = lines[i].split(' || ')
-    res.push(`${data[0]},${data[1]},${data[2]}`)
-  }
-  fs.writeFileSync(
-    path.resolve(__dirname, 'users.csv'),
-    res.join('\n')
-  )
 }
 
 // Read list of submitted GitHub projects, check it on Github:
@@ -173,7 +22,7 @@ function process() {
 // Then add to the list
 async function checkProjects() {
   const repos = [...new Set(
-    fs.readFileSync(path.resolve(__dirname, 'files/projects.txt'))
+    readRelativeOrElseCreate('projects.txt')
       .toString()
       .split('\n')
       .map((repo) => {
@@ -190,7 +39,7 @@ async function checkProjects() {
       })
       .sort((a, b) => a.localeCompare(b))
   )]
-  const startDate = new Date('2019-01-01')
+  const startDate = new Date('2000-01-01')
   const lastDate = new Date('2023-05-01')
   for (let i = 0; i < repos.length; i++) {
     if (!repos[i].startsWith('https://github.com')) {
@@ -213,7 +62,7 @@ async function checkProjects() {
           && data.is_template === false
         ) {
           fs.appendFileSync(
-            path.resolve('repos.txt'),
+            path.resolve('files/repos.txt'),
             `* [${repo}](${repos[i]})\n`
           )
           console.log('added')
@@ -229,7 +78,11 @@ async function checkProjects() {
 }
 
 async function filterRepos() {
-  const repos = fs.readFileSync(path.resolve(__dirname, 'files/repos.txt'))
+  if (!fs.existsSync("files")) {
+    fs.mkdirSync("files")
+  }
+
+  const repos = readRelativeOrElseCreate('files/repos.txt')
     .toString()
     .split('\n')
     .map((repo) => repo
@@ -369,17 +222,17 @@ async function filterRepos() {
   }
 
   result.forEach((repo) => {
-    fs.appendFileSync(path.resolve(__dirname, 'files/releases-5.txt'), `${repo}\n`)
+    fs.appendFileSync(path.resolve(__dirname, 'files/releases.txt'), `${repo}\n`)
   })
 }
 
 // Clone all github repositories, process all the files and directories and build hash map for each repo
 // [{dirs total, files total, files 1k+ lines}, ...]
 function cloneAndFilter() {
-  const repos = fs.readFileSync(path.resolve(__dirname, 'files/releases.txt')).toString().split('\n')
+  const repos = readRelativeOrElseCreate('files/releases.txt').toString().split('\n')
   const projects = path.resolve(__dirname, 'projects')
 
-  const processed = fs.readFileSync(path.resolve('files/directories.txt'))
+  const processed = readRelativeOrElseCreate('files/directories.txt')
     .toString()
     .split('\n')
     .map((str) => str.slice(0, str.indexOf(',')))
@@ -476,6 +329,10 @@ function cloneAndFilter() {
 
     const folder = repo.split('/')[1]
 
+    if (!fs.existsSync(path.resolve(projects))) {
+      fs.mkdirSync(path.resolve(projects))
+    }
+
     if (!fs.existsSync(path.resolve(projects, folder))) {
       console.log('cloning', repo)
       execSync(`git clone https://github.com/${repo}.git`, {cwd: projects})
@@ -487,7 +344,7 @@ function cloneAndFilter() {
     console.log(repo, stats)
 
     fs.appendFileSync(
-      path.resolve('directories.txt'),
+      path.resolve(__dirname, 'files/directories.txt'),
       `${[repo, stats.dirs, stats.files, stats.files_1k].join(',')}\n`
     )
   }
@@ -495,21 +352,21 @@ function cloneAndFilter() {
 
 // Check if repository contains dirs >= 10, files >= 50 and files 1k+ lines < 10, 
 function checkRepos() {
-  const lines = fs.readFileSync(path.resolve(__dirname, 'files/directories.txt')).toString().split('\n')
+  const lines = readRelativeOrElseCreate('files/directories.txt').toString().split('\n')
 
   for (let i = 0; i < lines.length; i++) {
     const data = lines[i].split(',')
     if (data[1] >= 10 && data[2] >= 50 && data[3] < 10) {
-      fs.appendFileSync(path.resolve(__dirname, 'files/dirs.txt'), `${data[0]}\n`)
+      fs.appendFileSync(path.resolve(__dirname, 'all.txt'), `${data[0]}\n`)
     }
   }
 }
 
 function top3() {
-  const all = fs.readFileSync(path.resolve(__dirname, 'files/all.txt')).toString().split('\n').map((line) => {
+  const all = readRelativeOrElseCreate('all.txt').toString().split('\n').map((line) => {
     return line.slice(line.indexOf('(') + 1, line.lastIndexOf(')'))
   })
-  const top = fs.readFileSync(path.resolve(__dirname, 'files/top.txt')).toString().split('\n')
+  const top = readRelativeOrElseCreate('top.txt').toString().split('\n')
 
   fs.writeFileSync(
     path.resolve(__dirname, 'other.txt'),
@@ -523,7 +380,7 @@ function top3() {
 function urlToMarkdown() {
   fs.writeFileSync(
     path.resolve(__dirname, 'files/markdown.txt'),
-    fs.readFileSync(path.resolve(__dirname, 'files/urls.txt'))
+      readRelativeOrElseCreate('files/urls.txt')
       .toString()
       .split('\n')
       .map((url) => `* [${url.slice(url.indexOf('.com/') + 5)}](${url})`)
@@ -531,12 +388,22 @@ function urlToMarkdown() {
   )
 }
 
-// getEmails()
-// byEmail()
-// process()
-// checkProjects()
-// filterRepos()
-// cloneAndFilter()
-// checkRepos()
-// top3()
-// urlToMarkdown()
+function readRelativeOrElseCreate(filePath) {
+  if (!fs.existsSync(path.resolve(__dirname, filePath))) {
+    fs.writeFileSync(path.resolve(__dirname, filePath), '')
+  }
+  return fs.readFileSync(path.resolve(__dirname, filePath))
+}
+
+async function execute() {
+  await checkProjects()
+  await filterRepos()
+  await cloneAndFilter()
+  await checkRepos()
+  await top3()
+  await urlToMarkdown()
+}
+
+execute()
+
+
