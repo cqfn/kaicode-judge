@@ -130,6 +130,9 @@ async function filterRepos() {
 
         if (req.status === 200) {
           await delay(300)
+          
+          console.log(req)
+          
           req = await axios.get(req.data.download_url)
           let lines = req.data.split('\n')
           
