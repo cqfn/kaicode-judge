@@ -263,6 +263,10 @@ function cloneAndFilter() {
                 && !fd.name.endsWith('.rst')
                 && !fd.name.endsWith('.gif')
                 && !fd.name.endsWith('.webp')
+                && !fd.name.endsWith('.pkl')
+                && !fd.name.endsWith('.pickle')
+                && !fd.name.endsWith('.json')
+                && !fd.name.endsWith('.tar.gz')
               ) {
                 const len = fs.readFileSync(path.resolve(dir, fd.name)).toString().split('\n').length
                 if (len >= 1000) {
@@ -295,6 +299,10 @@ function cloneAndFilter() {
                   && !fd.name.endsWith('.ttf')
                   && !fd.name.endsWith('.woff')
                   && !fd.name.endsWith('.pdf')
+                  && !fd.name.endsWith('.pkl')
+                  && !fd.name.endsWith('.pickle')
+                  && !fd.name.endsWith('.json')
+                  && !fd.name.endsWith('.tar.gz')
                 ) {
                   const len = fs.readFileSync(path.resolve(dir, fd.name)).toString().split('\n').length
                   if (len >= 1000) {
