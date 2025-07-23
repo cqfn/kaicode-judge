@@ -286,6 +286,9 @@ function cloneAndFilter() {
                 && !fd.name.endsWith('.zip')
                 && !fd.name.endsWith('.tar')
                 && !fd.name.endsWith('.gz')
+                && !fd.name.endsWith('.so')
+                && !fd.name.endsWith('.dll')
+                && !fd.name.endsWith('.dylib')
               ) {
                 const len = fs.readFileSync(path.resolve(dir, fd.name)).toString().split('\n').length
                 if (len >= 1000) {
@@ -325,6 +328,9 @@ function cloneAndFilter() {
                   && !fd.name.endsWith('.zip')
                   && !fd.name.endsWith('.tar')
                   && !fd.name.endsWith('.gz')
+                  && !fd.name.endsWith('.so')
+                  && !fd.name.endsWith('.dll')
+                  && !fd.name.endsWith('.dylib')
                 ) {
                   const len = fs.readFileSync(path.resolve(dir, fd.name)).toString().split('\n').length
                   if (len >= 1000) {
