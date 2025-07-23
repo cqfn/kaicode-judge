@@ -130,11 +130,24 @@ async function filterRepos() {
 
         if (req.status === 200) {
           await delay(300)
-
-          console.log(req)
-
           req = await axios.get(req.data.download_url)
-          const lines = req.data.split('\n')
+          let lines = req.data.split('\n')
+          
+          // If README is too short, check root directory for other README files
+          if (lines.length < 20) {
+            await delay(300)
+            const rootReq = await octokit.request(`GET /repos/${url}/contents`)
+            if (rootReq.status === 200) {
+              const readmeFile = rootReq.data.find(file => 
+                file.type === 'file' && /^readme\.(md|rst|txt)$/i.test(file.name)
+              )
+              if (readmeFile) {
+                await delay(300)
+                const contentReq = await axios.get(readmeFile.download_url)
+                lines = contentReq.data.split('\n')
+              }
+            }
+          }
 
           if (lines.length < 20) {
             continue
