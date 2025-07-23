@@ -39,8 +39,12 @@ async function checkProjects() {
       })
       .sort((a, b) => a.localeCompare(b))
   )]
+
+  const today = new Date();
+  const fiveYearsAgo = new Date(today.getFullYear() - 5, today.getMonth(), today.getDate());
+
   const startDate = new Date('2000-01-01')
-  const lastDate = new Date('2023-05-01')
+
   for (let i = 0; i < repos.length; i++) {
     if (!repos[i].startsWith('https://github.com')) {
       continue
@@ -56,7 +60,7 @@ async function checkProjects() {
         console.log(data.name, data.created_at)
         if (data.private === false
           && new Date(data.created_at) >= startDate
-          && new Date(data.created_at) <= lastDate
+          && new Date(data.created_at) <= fiveYearsAgo
           && data.archived === false
           && data.disabled === false
           && data.is_template === false
