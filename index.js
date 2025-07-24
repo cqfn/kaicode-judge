@@ -138,7 +138,23 @@ async function filterRepos() {
           console.log(req)
 
           req = await axios.get(req.data.download_url)
-          const lines = req.data.split('\n')
+          let lines = req.data.split('\n')
+          
+          // If README is too short, check root directory for other README files
+          if (lines.length < 20) {
+            await delay(300)
+            const rootReq = await octokit.request(`GET /repos/${url}/contents`)
+            if (rootReq.status === 200) {
+              const readmeFile = rootReq.data.find(file => 
+                file.type === 'file' && /^readme\.(md|rst|txt)$/i.test(file.name)
+              )
+              if (readmeFile) {
+                await delay(300)
+                const contentReq = await axios.get(readmeFile.download_url)
+                lines = contentReq.data.split('\n')
+              }
+            }
+          }
 
           if (lines.length < 20) {
             continue
@@ -267,6 +283,16 @@ function cloneAndFilter() {
                 && !fd.name.endsWith('.rst')
                 && !fd.name.endsWith('.gif')
                 && !fd.name.endsWith('.webp')
+                && !fd.name.endsWith('.pkl')
+                && !fd.name.endsWith('.pickle')
+                && !fd.name.endsWith('.json')
+                && !fd.name.endsWith('.tar.gz')
+                && !fd.name.endsWith('.zip')
+                && !fd.name.endsWith('.tar')
+                && !fd.name.endsWith('.gz')
+                && !fd.name.endsWith('.so')
+                && !fd.name.endsWith('.dll')
+                && !fd.name.endsWith('.dylib')
               ) {
                 const len = fs.readFileSync(path.resolve(dir, fd.name)).toString().split('\n').length
                 if (len >= 1000) {
@@ -299,6 +325,16 @@ function cloneAndFilter() {
                   && !fd.name.endsWith('.ttf')
                   && !fd.name.endsWith('.woff')
                   && !fd.name.endsWith('.pdf')
+                  && !fd.name.endsWith('.pkl')
+                  && !fd.name.endsWith('.pickle')
+                  && !fd.name.endsWith('.json')
+                  && !fd.name.endsWith('.tar.gz')
+                  && !fd.name.endsWith('.zip')
+                  && !fd.name.endsWith('.tar')
+                  && !fd.name.endsWith('.gz')
+                  && !fd.name.endsWith('.so')
+                  && !fd.name.endsWith('.dll')
+                  && !fd.name.endsWith('.dylib')
                 ) {
                   const len = fs.readFileSync(path.resolve(dir, fd.name)).toString().split('\n').length
                   if (len >= 1000) {
