@@ -1,3 +1,5 @@
+require('./fix-slowbuffer'); // Polyfill for Node 25+ compatibility
+
 const axios = require('axios');
 const {Octokit, App} = require('octokit')
 const fs = require('fs');
@@ -71,7 +73,7 @@ async function checkProjects() {
           )
           console.log('added')
         }
-        await delay(500)
+        await delay(10000)
       } else {
         console.log('Something went wrong: ', response)
       }
@@ -95,6 +97,7 @@ async function filterRepos() {
   )
   const result = []
   for (let idx in repos) {
+    await delay(10000)
     const url = repos[idx]
     let req
     try {
