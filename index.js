@@ -1,14 +1,31 @@
-require('./fix-slowbuffer'); // Polyfill for Node 25+ compatibility
+//require('./fix-slowbuffer'); // Polyfill for Node 25+ compatibility
+const bufferModule = require('buffer');
+
+if (!bufferModule.SlowBuffer) {
+  class SlowBuffer extends bufferModule.Buffer { }
+  bufferModule.SlowBuffer = SlowBuffer;
+}
 
 const axios = require('axios');
-const {Octokit, App} = require('octokit')
+const { Octokit, App } = require('octokit')
 const fs = require('fs');
 const path = require('path');
-const {execSync} = require('child_process');
+const { execSync } = require('child_process');
 
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
 });
+
+// Log every URL the app accesses
+//octokit.hook.wrap('request', async (request, options) => {
+//  console.log('[URL]', options.url);
+//  return request(options);
+//});
+
+//axios.interceptors.request.use((config) => {
+//  console.log('[URL]', config.url);
+//  return config;
+//});
 
 function delay(milliseconds) {
   return new Promise(resolve => {
@@ -42,20 +59,25 @@ async function checkProjects() {
       .sort((a, b) => a.localeCompare(b))
   )]
 
-  const today = new Date();
-  const fiveYearsAgo = new Date(today.getFullYear() - 5, today.getMonth(), today.getDate());
+  if (!fs.existsSync(path.resolve('files'))) {
+    fs.mkdirSync(path.resolve('files'))
+  }
 
-  const startDate = new Date('2000-01-01')
+  const today = new Date();
+  const fiveYearsAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+
+  const startDate = new Date('2021-01-01')
 
   for (let i = 0; i < repos.length; i++) {
     if (!repos[i].startsWith('https://github.com')) {
       continue
     }
-    const repo = repos[i].split('github.com/')[1]
+    const repo = repos[i].split('github.com/')[1].trim()
     if (repo.indexOf('/') === -1) {
       continue
     }
     try {
+      console.log('Requesting repo: ', repo)
       const response = await octokit.request('GET https://api.github.com/repos/' + repo)
       if (response.status === 200) {
         let data = response.data
@@ -69,16 +91,16 @@ async function checkProjects() {
         ) {
           fs.appendFileSync(
             path.resolve('files/repos.txt'),
-            `* [${repo}](${repos[i]})\n`
+            `* [${repo}](${repos[i].trim()})\n`
           )
           console.log('added')
         }
-        await delay(10000)
+        //await delay(10000)
       } else {
         console.log('Something went wrong: ', response)
       }
     } catch (e) {
-      console.log('Request fail: ', e.message)
+      console.log('Request fail: ', e.message, repo)
     }
   }
 }
@@ -94,11 +116,11 @@ async function filterRepos() {
     .map((repo) => repo
       .slice(repo.indexOf('](') + 2, repo.length - 1)
       .slice(19)
-  )
+    )
   const result = []
   for (let idx in repos) {
     await delay(10000)
-    const url = repos[idx]
+    const url = repos[idx].trim()
     let req
     try {
       const response = await octokit.request('GET https://api.github.com/repos/' + url)
@@ -142,13 +164,13 @@ async function filterRepos() {
 
           req = await axios.get(req.data.download_url)
           let lines = req.data.split('\n')
-          
+
           // If README is too short, check root directory for other README files
           if (lines.length < 20) {
             await delay(300)
             const rootReq = await octokit.request(`GET /repos/${url}/contents`)
             if (rootReq.status === 200) {
-              const readmeFile = rootReq.data.find(file => 
+              const readmeFile = rootReq.data.find(file =>
                 file.type === 'file' && /^readme\.(md|rst|txt)$/i.test(file.name)
               )
               if (readmeFile) {
@@ -260,9 +282,9 @@ function cloneAndFilter() {
     .split('\n')
     .map((str) => str.slice(0, str.indexOf(',')))
 
-  const filter = function(pth, stat, checked) {
-    const directory = function(dir) {
-      fs.readdirSync(dir, {withFileTypes: true}).forEach((fd) => {
+  const filter = function (pth, stat, checked) {
+    const directory = function (dir) {
+      fs.readdirSync(dir, { withFileTypes: true }).forEach((fd) => {
         if (!checked.includes(path.resolve(dir, fd.name))) {
           if (fd.isDirectory()) {
             if (fd.name !== '.git') {
@@ -363,7 +385,7 @@ function cloneAndFilter() {
 
   for (let idx in repos) {
     console.log('left', repos.length - idx)
-    const repo = repos[idx]
+    const repo = repos[idx].trim()
 
     if (processed.includes(repo)) {
       console.log('skipping', repo)
@@ -378,11 +400,12 @@ function cloneAndFilter() {
 
     if (!fs.existsSync(path.resolve(projects, folder))) {
       console.log('cloning', repo)
-      execSync(`git clone https://github.com/${repo}.git`, {cwd: projects})
+      console.log('[URL]', `https://github.com/${repo}.git`)
+      execSync(`git clone https://github.com/${repo}.git`, { cwd: projects })
     }
 
     console.log('start filtering', repo)
-    const stats = filter(path.resolve(projects, folder), {dirs: 0, files: 0, files_1k: 0}, [])
+    const stats = filter(path.resolve(projects, folder), { dirs: 0, files: 0, files_1k: 0 }, [])
 
     console.log(repo, stats)
 
@@ -423,7 +446,7 @@ function top3() {
 function urlToMarkdown() {
   fs.writeFileSync(
     path.resolve(__dirname, 'files/markdown.txt'),
-      readRelativeOrElseCreate('files/urls.txt')
+    readRelativeOrElseCreate('files/urls.txt')
       .toString()
       .split('\n')
       .map((url) => `* [${url.slice(url.indexOf('.com/') + 5)}](${url})`)
@@ -440,11 +463,17 @@ function readRelativeOrElseCreate(filePath) {
 
 async function execute() {
   await checkProjects()
+  console.log('[DONE] Projects list check')
   await filterRepos()
+  console.log('[DONE] Filter')
   await cloneAndFilter()
+  console.log('[DONE] Clone & filter')
   await checkRepos()
+  console.log('[DONE] Check')
   await top3()
+  console.log('[DONE] Top 3')
   await urlToMarkdown()
+  console.log('[DONE] Output')
 }
 
 execute()
