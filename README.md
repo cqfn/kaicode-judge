@@ -1,6 +1,6 @@
 GitHub projects validation script for KaiCode competition.
 
-# How to run 
+# Usage 
 
 1. Place `projects.txt` into the repo root folder.
 
@@ -8,6 +8,21 @@ GitHub projects validation script for KaiCode competition.
 ```sh
 node start
 ```
+
+3. Verify the output
+
+After the pipeline completes, check the following files for results:
+
+| File | Stage | Description |
+|------|-------|-------------|
+| `files/repos.txt` | Step 1 – checkProjects | Repos that passed initial checks (not private, not template, ≥1 year old, not archived, not disabled). Markdown link format. |
+| `files/releases.txt` | Step 2 – filterRepos | Repos that passed deeper filtering (≥5 releases, license, README ≥20 lines, ≥10 issues, ≥50 commits, ≥10 PRs, ≥1 CI/CD workflow). |
+| `files/directories.txt` | Step 3 – cloneAndFilter | Per-repo directory stats: `repo,dirs,files,files_1k` (comma-separated). |
+| `all.txt` | Step 4 – checkRepos | Repos meeting final criteria: dirs ≥10, files ≥50, files with 1,000+ lines <10. |
+| `top.txt` | Step 5 – top3 | Manually curated list of top repos (input file, pre-populated). |
+| `other.txt` | Step 5 – top3 | Repos from `all.txt` not in `top.txt`, formatted as markdown links. |
+| `files/markdown.txt` | Step 6 – urlToMarkdown | All URLs from `files/urls.txt` converted to markdown link format. |
+| `projects/` | Step 3 – cloneAndFilter | Cloned git repositories (one subfolder per repo). |
 
 # Project conformance rules
 

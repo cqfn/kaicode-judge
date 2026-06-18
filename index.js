@@ -587,20 +587,18 @@ function checkRepos() {
 function top3() {
   console.log('[top3] Separating top repos from others')
 
-  const all = readRelativeOrElseCreate('all.txt').toString().split('\n').map((line) => {
-    return line.slice(line.indexOf('(') + 1, line.lastIndexOf(')'))
-  }).filter(l => l.trim())
+  const all = readRelativeOrElseCreate('all.txt').toString().split('\n').filter(l => l.trim())
   const top = readRelativeOrElseCreate('top.txt').toString().split('\n').filter(l => l.trim())
 
   console.log(`[top3] Total repos: ${all.length}, Top repos: ${top.length}`)
 
-  const others = all.filter(url => !top.includes(url))
+  const others = all.filter(repo => !top.includes(repo))
   console.log(`[top3] Other repos (not in top): ${others.length}`)
 
   fs.writeFileSync(
     path.resolve(__dirname, 'other.txt'),
     others
-      .map((url) => `* [${url.slice(url.indexOf('.com/') + 5)}](${url})`)
+      .map((repo) => `* [${repo}](https://github.com/${repo})`)
       .join('\n')
   )
 
